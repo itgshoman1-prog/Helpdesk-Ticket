@@ -1,18 +1,17 @@
 'use client'
 import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/app/lib/store'
 
 export function AuthRedirect() {
-  const router = useRouter()
   const user = useAuthStore((s) => s.user)
   const hasHydrated = useAuthStore((s) => s._hasHydrated)
 
   useEffect(() => {
-    if (hasHydrated && !user) router.replace('/login')
-  }, [hasHydrated, user, router])
+    // Use window.location to avoid touching the Next.js client router while
+    // the LayoutRouterContext is still being initialised (avoids E56 invariant).
+    if (hasHydrated && !user) window.location.replace('/login')
+  }, [hasHydrated, user])
 
-  // Cover the page while the Zustand store rehydrates from localStorage.
   if (!hasHydrated) {
     return (
       <div className="fixed inset-0 z-50 bg-gray-50 flex items-center justify-center">

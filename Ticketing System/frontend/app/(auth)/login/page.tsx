@@ -27,8 +27,8 @@ export default function LoginPage() {
 
   // Redirect already-authenticated users away from the login page.
   useEffect(() => {
-    if (hasHydrated && user) router.replace('/dashboard')
-  }, [hasHydrated, user, router])
+    if (hasHydrated && user) window.location.replace('/dashboard')
+  }, [hasHydrated, user])
 
   useEffect(() => {
     api.get('/branding/').then((r) => setBranding(r.data)).catch(() => {})

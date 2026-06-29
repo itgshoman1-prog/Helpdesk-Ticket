@@ -1,21 +1,8 @@
-'use client'
-import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { useAuthStore } from '@/app/lib/store'
+import { redirect } from 'next/navigation'
 
+// Server-side redirect — no client JS needed, no routing context required.
+// Unauthenticated users land on /login.
+// The login page redirects already-authenticated users to /dashboard.
 export default function RootPage() {
-  const router = useRouter()
-  const user = useAuthStore((s) => s.user)
-  const hasHydrated = useAuthStore((s) => s._hasHydrated)
-
-  useEffect(() => {
-    if (!hasHydrated) return
-    router.replace(user ? '/dashboard' : '/login')
-  }, [hasHydrated, user, router])
-
-  return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-900" />
-    </div>
-  )
+  redirect('/login')
 }
