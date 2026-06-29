@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/app/lib/store'
 import api from '@/app/lib/api'
 import { SystemSettings } from '@/app/lib/types'
@@ -13,6 +14,7 @@ const HIGHLIGHTS = [
 ]
 
 export default function LoginPage() {
+  const router = useRouter()
   const setAuth = useAuthStore((s) => s.setAuth)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -20,11 +22,6 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [branding, setBranding] = useState<Pick<SystemSettings, 'company_name' | 'portal_name' | 'company_logo_url' | 'primary_color' | 'portal_welcome' | 'support_hours' | 'company_email'> | null>(null)
-
-  // One-time check on mount — no Zustand subscription, so no re-render fires.
-  useEffect(() => {
-    if (localStorage.getItem('access_token')) window.location.replace('/dashboard')
-  }, [])
 
   useEffect(() => {
     api.get('/branding/').then((r) => setBranding(r.data)).catch(() => {})
@@ -39,7 +36,7 @@ export default function LoginPage() {
     try {
       const res = await api.post('/auth/login/', { email, password })
       setAuth(res.data.user, res.data.access, res.data.refresh)
-      window.location.replace('/dashboard')
+      router.push('/dashboard')
     } catch (err: any) {
       setError(err.response?.data?.error || 'Incorrect email or password.')
     } finally {

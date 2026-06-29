@@ -20,9 +20,7 @@ const PAGE_TITLES: Record<string, string> = {
 export function Topbar() {
   const router = useRouter()
   const pathname = usePathname()
-  const user = useAuthStore((s) => s.user)
-  const clearAuth = useAuthStore((s) => s.clearAuth)
-  const refreshToken = useAuthStore((s) => s.refreshToken)
+  const { user, clearAuth, refreshToken } = useAuthStore()
   const [unread, setUnread] = useState(0)
   const [menuOpen, setMenuOpen] = useState(false)
 

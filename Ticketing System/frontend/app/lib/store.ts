@@ -6,6 +6,8 @@ interface AuthState {
   user: User | null
   accessToken: string | null
   refreshToken: string | null
+  _hasHydrated: boolean
+  setHasHydrated: (v: boolean) => void
   setAuth: (user: User, access: string, refresh: string) => void
   clearAuth: () => void
   setUser: (user: User) => void
@@ -17,6 +19,8 @@ export const useAuthStore = create<AuthState>()(
       user: null,
       accessToken: null,
       refreshToken: null,
+      _hasHydrated: false,
+      setHasHydrated: (v) => set({ _hasHydrated: v }),
       setAuth: (user, accessToken, refreshToken) => {
         localStorage.setItem('access_token', accessToken)
         localStorage.setItem('refresh_token', refreshToken)
@@ -36,13 +40,9 @@ export const useAuthStore = create<AuthState>()(
         accessToken: state.accessToken,
         refreshToken: state.refreshToken,
       }),
-      // No onRehydrateStorage — the callback fired set() synchronously during
-      // Zustand's persist hydration, which happened while Next.js's hydrateRoot()
-      // was running inside React.startTransition(). That synchronous set() had
-      // higher priority than the transition, interrupting the hydration at a point
-      // where LayoutRouterContext.Provider had not yet committed. OuterLayoutRouter
-      // ran in that window and got null context → E56 invariant.
-      // Auth checks now use localStorage directly (AuthRedirect, login page).
+      onRehydrateStorage: () => (state) => {
+        state?.setHasHydrated(true)
+      },
     }
   )
 )
