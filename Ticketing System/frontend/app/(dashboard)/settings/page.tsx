@@ -2,15 +2,15 @@
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import api from '@/app/lib/api'
-import { SystemSettings, TicketFormConfig } from '@/app/lib/types'
+import { SystemSettings, TicketFormConfig, TicketCategory } from '@/app/lib/types'
 import { useAuthStore } from '@/app/lib/store'
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card'
 import { Button } from '@/app/components/ui/button'
 import { Input } from '@/app/components/ui/input'
 import { Textarea } from '@/app/components/ui/textarea'
 import {
-  Settings, Building2, Ticket, Mail, Layout,
-  CheckCircle2, Circle, Upload, X, Eye,
+  Settings, Building2, Ticket, Mail, Layout, Tag,
+  CheckCircle2, Circle, Upload, X, Eye, Plus, Pencil, Trash2, GripVertical,
 } from 'lucide-react'
 
 // ─── tiny local Toggle ───────────────────────────────────────────────────────
@@ -54,6 +54,7 @@ const TABS = [
   { id: 'ticket_numbering', label: 'Ticket Series', icon: Ticket },
   { id: 'email', label: 'Email', icon: Mail },
   { id: 'form_fields', label: 'Form Fields', icon: Settings },
+  { id: 'categories', label: 'Categories', icon: Tag },
 ]
 
 const FORM_FIELDS = [
@@ -80,6 +81,12 @@ export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState('organisation')
   const [settings, setSettings] = useState<Partial<SystemSettings>>(DEFAULT_SETTINGS)
   const [formConfig, setFormConfig] = useState<TicketFormConfig | null>(null)
+  const [categories, setCategories] = useState<TicketCategory[]>([])
+  const [catModal, setCatModal] = useState(false)
+  const [catEditing, setCatEditing] = useState<TicketCategory | null>(null)
+  const [catForm, setCatForm] = useState({ name: '', slug: '', description: '', color: '#6b7280', is_active: true })
+  const [catSaving, setCatSaving] = useState(false)
+  const [catError, setCatError] = useState('')
   const [preview, setPreview] = useState('TKT-2026-00001')
   const [logoPreview, setLogoPreview] = useState<string | null>(null)
   const [logoFile, setLogoFile] = useState<File | null>(null)
@@ -96,13 +103,15 @@ export default function SettingsPage() {
     Promise.all([
       api.get('/branding/'),
       api.get('/tickets/form-config/'),
-    ]).then(([bRes, fRes]) => {
+      api.get('/tickets/categories/'),
+    ]).then(([bRes, fRes, cRes]) => {
       const s: SystemSettings = bRes.data
       setSettings(s)
       setPreview(s.ticket_number_preview || 'TKT-2026-00001')
       if (s.company_logo_url) setLogoPreview(s.company_logo_url)
       if (s.favicon_url) setFaviconPreview(s.favicon_url)
       setFormConfig(fRes.data)
+      setCategories(cRes.data.results ?? cRes.data)
       setLoading(false)
     })
   }, [user, router])
@@ -139,6 +148,54 @@ export default function SettingsPage() {
     setFaviconFile(file)
     setFaviconPreview(URL.createObjectURL(file))
     setSaved(null)
+  }
+
+  const openCatModal = (cat?: TicketCategory) => {
+    if (cat) {
+      setCatEditing(cat)
+      setCatForm({ name: cat.name, slug: cat.slug, description: cat.description, color: cat.color, is_active: cat.is_active })
+    } else {
+      setCatEditing(null)
+      setCatForm({ name: '', slug: '', description: '', color: '#6b7280', is_active: true })
+    }
+    setCatError('')
+    setCatModal(true)
+  }
+
+  const autoSlug = (name: string) =>
+    name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '')
+
+  const handleCatSave = async () => {
+    if (!catForm.name.trim()) { setCatError('Name is required.'); return }
+    if (!catForm.slug.trim()) { setCatError('Slug is required.'); return }
+    setCatSaving(true); setCatError('')
+    try {
+      if (catEditing) {
+        const res = await api.patch(`/tickets/categories/${catEditing.id}/`, catForm)
+        setCategories((prev) => prev.map((c) => c.id === catEditing.id ? res.data : c))
+      } else {
+        const res = await api.post('/tickets/categories/', { ...catForm, order: categories.length })
+        setCategories((prev) => [...prev, res.data])
+      }
+      setCatModal(false)
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: Record<string, string[]> } }
+      const msg = err.response?.data ? Object.values(err.response.data).flat().join(' ') : 'Save failed.'
+      setCatError(msg)
+    } finally {
+      setCatSaving(false)
+    }
+  }
+
+  const handleCatDelete = async (cat: TicketCategory) => {
+    if (!confirm(`Delete category "${cat.name}"? Existing tickets will still show the slug.`)) return
+    await api.delete(`/tickets/categories/${cat.id}/`)
+    setCategories((prev) => prev.filter((c) => c.id !== cat.id))
+  }
+
+  const handleCatToggle = async (cat: TicketCategory) => {
+    const res = await api.patch(`/tickets/categories/${cat.id}/`, { is_active: !cat.is_active })
+    setCategories((prev) => prev.map((c) => c.id === cat.id ? res.data : c))
   }
 
   const handleSave = async () => {
@@ -195,7 +252,9 @@ export default function SettingsPage() {
               <CheckCircle2 className="w-4 h-4" /> Saved
             </span>
           )}
-          <Button onClick={handleSave} loading={saving}>Save All Changes</Button>
+          {activeTab !== 'categories' && (
+            <Button onClick={handleSave} loading={saving}>Save All Changes</Button>
+          )}
         </div>
       </div>
 
@@ -563,6 +622,167 @@ export default function SettingsPage() {
               </ol>
             </CardContent>
           </Card>
+        </div>
+      )}
+
+      {/* ── Categories ── */}
+      {activeTab === 'categories' && (
+        <div className="space-y-4">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle>Ticket Categories</CardTitle>
+                <Button onClick={() => openCatModal()} className="flex items-center gap-2">
+                  <Plus className="w-4 h-4" /> Add Category
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {categories.length === 0 ? (
+                <p className="text-sm text-gray-500 py-8 text-center">No categories yet. Click "Add Category" to create one.</p>
+              ) : (
+                <div className="divide-y divide-gray-100">
+                  {categories.map((cat) => (
+                    <div key={cat.id} className="flex items-center gap-4 py-3">
+                      <GripVertical className="w-4 h-4 text-gray-300 flex-shrink-0" />
+                      <span
+                        className="w-3 h-3 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: cat.color }}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className={`font-medium text-sm ${cat.is_active ? 'text-gray-900' : 'text-gray-400 line-through'}`}>
+                          {cat.name}
+                        </p>
+                        <p className="text-xs text-gray-400 font-mono">{cat.slug}</p>
+                        {cat.description && <p className="text-xs text-gray-500 truncate">{cat.description}</p>}
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <button
+                          onClick={() => handleCatToggle(cat)}
+                          className={`text-xs px-2.5 py-1 rounded-full font-medium transition-colors ${
+                            cat.is_active
+                              ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                              : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                          }`}
+                        >
+                          {cat.is_active ? 'Active' : 'Inactive'}
+                        </button>
+                        <button onClick={() => openCatModal(cat)} className="p-1.5 text-gray-400 hover:text-blue-600 rounded">
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                        <button onClick={() => handleCatDelete(cat)} className="p-1.5 text-gray-400 hover:text-red-600 rounded">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="pt-4">
+              <p className="text-sm text-gray-500">
+                Categories appear in the ticket creation form. Deactivating a category hides it from new tickets
+                but keeps the label on existing ones.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* ── Category Modal ── */}
+      {catModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-gray-900">
+                {catEditing ? 'Edit Category' : 'New Category'}
+              </h2>
+              <button onClick={() => setCatModal(false)} className="text-gray-400 hover:text-gray-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {catError && (
+              <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{catError}</p>
+            )}
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
+                <input
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={catForm.name}
+                  onChange={(e) => {
+                    const name = e.target.value
+                    setCatForm((p) => ({ ...p, name, slug: catEditing ? p.slug : autoSlug(name) }))
+                  }}
+                  placeholder="e.g. IT Support"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Slug * <span className="text-xs text-gray-400 font-normal">(URL-safe key, stored on tickets)</span></label>
+                <input
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={catForm.slug}
+                  onChange={(e) => setCatForm((p) => ({ ...p, slug: e.target.value.replace(/[^a-z0-9_]/g, '') }))}
+                  placeholder="it_support"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                <input
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={catForm.description}
+                  onChange={(e) => setCatForm((p) => ({ ...p, description: e.target.value }))}
+                  placeholder="Optional description"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Badge Colour</label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="color"
+                    className="w-10 h-10 rounded cursor-pointer border border-gray-200"
+                    value={catForm.color}
+                    onChange={(e) => setCatForm((p) => ({ ...p, color: e.target.value }))}
+                  />
+                  <span className="text-sm font-mono text-gray-600">{catForm.color}</span>
+                  <span className="ml-auto inline-flex items-center px-3 py-1 rounded-full text-white text-xs font-medium" style={{ backgroundColor: catForm.color }}>
+                    {catForm.name || 'Preview'}
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center justify-between py-1">
+                <label className="text-sm font-medium text-gray-700">Active</label>
+                <button
+                  type="button"
+                  onClick={() => setCatForm((p) => ({ ...p, is_active: !p.is_active }))}
+                  className={`relative inline-flex h-6 w-11 rounded-full transition-colors ${catForm.is_active ? 'bg-blue-900' : 'bg-gray-200'}`}
+                >
+                  <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${catForm.is_active ? 'translate-x-5' : 'translate-x-0'}`} />
+                </button>
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => setCatModal(false)}
+                className="flex-1 px-4 py-2 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCatSave}
+                disabled={catSaving}
+                className="flex-1 px-4 py-2 bg-blue-900 text-white rounded-xl text-sm font-medium hover:bg-blue-800 disabled:opacity-50"
+              >
+                {catSaving ? 'Saving…' : 'Save Category'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

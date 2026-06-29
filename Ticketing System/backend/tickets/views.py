@@ -7,11 +7,11 @@ from django_filters.rest_framework import DjangoFilterBackend
 from django.utils import timezone
 
 from rest_framework.views import APIView
-from .models import Ticket, Comment, Attachment, TicketFormConfig
+from .models import Ticket, Comment, Attachment, TicketFormConfig, TicketCategory
 from .serializers import (
     TicketListSerializer, TicketDetailSerializer,
     TicketCreateSerializer, CommentSerializer, AttachmentSerializer,
-    TicketFormConfigSerializer,
+    TicketFormConfigSerializer, TicketCategorySerializer,
 )
 from .filters import TicketFilter
 from .sla import apply_sla
@@ -161,6 +161,29 @@ class TicketViewSet(viewsets.ModelViewSet):
                    description=f'Attachment {file.name} added to {ticket.ticket_number}',
                    ticket=ticket, request=request)
         return Response(AttachmentSerializer(attachment).data, status=201)
+
+
+class TicketCategoryViewSet(viewsets.ModelViewSet):
+    """
+    GET  — all authenticated users (to populate the form dropdown)
+    POST/PATCH/DELETE — admins only
+    """
+    serializer_class = TicketCategorySerializer
+    filter_backends = [SearchFilter, OrderingFilter]
+    search_fields = ['name', 'slug']
+    ordering_fields = ['order', 'name']
+
+    def get_queryset(self):
+        qs = TicketCategory.objects.all()
+        if self.request.query_params.get('active_only') == 'true':
+            qs = qs.filter(is_active=True)
+        return qs
+
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve']:
+            return [IsAuthenticated()]
+        from users.permissions import IsAdminUser
+        return [IsAdminUser()]
 
 
 class TicketFormConfigView(APIView):

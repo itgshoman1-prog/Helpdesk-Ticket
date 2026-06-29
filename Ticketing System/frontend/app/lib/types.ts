@@ -32,6 +32,16 @@ export interface Department {
   updated_at: string
 }
 
+export interface TicketCategory {
+  id: number
+  name: string
+  slug: string
+  description: string
+  color: string
+  is_active: boolean
+  order: number
+}
+
 export interface TicketFormConfig {
   category_required: boolean
   priority_required: boolean

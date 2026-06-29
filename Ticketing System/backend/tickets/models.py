@@ -2,6 +2,24 @@ from django.db import models
 from django.utils import timezone
 
 
+class TicketCategory(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+    slug = models.SlugField(max_length=100, unique=True)
+    description = models.CharField(max_length=300, blank=True)
+    color = models.CharField(max_length=7, default='#6b7280', help_text='Hex badge colour')
+    is_active = models.BooleanField(default=True)
+    order = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['order', 'name']
+        verbose_name = 'Ticket Category'
+        verbose_name_plural = 'Ticket Categories'
+
+    def __str__(self):
+        return self.name
+
+
 class TicketFormConfig(models.Model):
     """Single-row configuration for the ticket submission form.
     Always access via TicketFormConfig.get_config()."""
@@ -67,24 +85,10 @@ class Ticket(models.Model):
         (LOW, 'Low'),
     ]
 
-    # Category choices
-    CATEGORY_CHOICES = [
-        ('it_support', 'IT Support'),
-        ('biomedical', 'Biomedical Engineering'),
-        ('maintenance', 'Maintenance'),
-        ('housekeeping', 'Housekeeping'),
-        ('hr', 'Human Resources'),
-        ('finance', 'Finance'),
-        ('procurement', 'Procurement'),
-        ('administration', 'Administration'),
-        ('security', 'Security'),
-        ('other', 'Other'),
-    ]
-
     ticket_number = models.CharField(max_length=20, unique=True, editable=False)
     title = models.CharField(max_length=300)
     description = models.TextField()
-    category = models.CharField(max_length=50, choices=CATEGORY_CHOICES)
+    category = models.CharField(max_length=100, blank=True)
     priority = models.CharField(max_length=20, choices=PRIORITY_CHOICES, default=MEDIUM)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=NEW)
 

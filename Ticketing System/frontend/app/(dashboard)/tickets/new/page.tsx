@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import api from '@/app/lib/api'
-import { Department, TicketFormConfig } from '@/app/lib/types'
+import { Department, TicketFormConfig, TicketCategory } from '@/app/lib/types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card'
 import { Button } from '@/app/components/ui/button'
 import { Input } from '@/app/components/ui/input'
@@ -10,19 +10,6 @@ import { Select } from '@/app/components/ui/select'
 import { Textarea } from '@/app/components/ui/textarea'
 import { ArrowLeft, Paperclip, X, Zap } from 'lucide-react'
 import Link from 'next/link'
-
-const CATEGORIES = [
-  { value: 'it_support', label: 'IT Support' },
-  { value: 'biomedical', label: 'Biomedical Engineering' },
-  { value: 'maintenance', label: 'Maintenance' },
-  { value: 'housekeeping', label: 'Housekeeping' },
-  { value: 'hr', label: 'Human Resources' },
-  { value: 'finance', label: 'Finance' },
-  { value: 'procurement', label: 'Procurement' },
-  { value: 'administration', label: 'Administration' },
-  { value: 'security', label: 'Security' },
-  { value: 'other', label: 'Other' },
-]
 
 const PRIORITIES = [
   { value: 'low', label: 'Low' },
@@ -45,6 +32,7 @@ function req(label: string, required: boolean) {
 export default function NewTicketPage() {
   const router = useRouter()
   const [departments, setDepartments] = useState<Department[]>([])
+  const [categories, setCategories] = useState<TicketCategory[]>([])
   const [config, setConfig] = useState<TicketFormConfig>(DEFAULT_CONFIG)
   const [selectedDept, setSelectedDept] = useState<Department | null>(null)
   const [form, setForm] = useState({
@@ -59,9 +47,11 @@ export default function NewTicketPage() {
     Promise.all([
       api.get('/departments/?is_active=true'),
       api.get('/tickets/form-config/'),
-    ]).then(([deptRes, cfgRes]) => {
+      api.get('/tickets/categories/?active_only=true'),
+    ]).then(([deptRes, cfgRes, catRes]) => {
       setDepartments(deptRes.data.results ?? deptRes.data)
       setConfig(cfgRes.data)
+      setCategories(catRes.data.results ?? catRes.data)
     })
   }, [])
 
@@ -157,7 +147,7 @@ export default function NewTicketPage() {
             <div className="grid grid-cols-2 gap-4">
               <Select
                 label={req('Category', config.category_required)}
-                options={CATEGORIES}
+                options={categories.map((c) => ({ value: c.slug, label: c.name }))}
                 placeholder="Select category..."
                 value={form.category}
                 onChange={(e) => handleChange('category', e.target.value)}

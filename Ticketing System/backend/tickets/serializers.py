@@ -1,7 +1,13 @@
 from rest_framework import serializers
-from .models import Ticket, Comment, Attachment, CommentAttachment, TicketFormConfig
+from .models import Ticket, Comment, Attachment, CommentAttachment, TicketFormConfig, TicketCategory
 from users.serializers import UserMinimalSerializer
 from departments.serializers import DepartmentMinimalSerializer
+
+
+class TicketCategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TicketCategory
+        fields = ['id', 'name', 'slug', 'description', 'color', 'is_active', 'order']
 
 
 class TicketFormConfigSerializer(serializers.ModelSerializer):
@@ -39,9 +45,15 @@ class TicketListSerializer(serializers.ModelSerializer):
     department_detail = DepartmentMinimalSerializer(source='department', read_only=True)
     status_display = serializers.CharField(source='get_status_display', read_only=True)
     priority_display = serializers.CharField(source='get_priority_display', read_only=True)
-    category_display = serializers.CharField(source='get_category_display', read_only=True)
+    category_display = serializers.SerializerMethodField()
     is_sla_response_breached = serializers.ReadOnlyField()
     is_sla_resolution_breached = serializers.ReadOnlyField()
+
+    def get_category_display(self, obj):
+        if not obj.category:
+            return ''
+        cat = TicketCategory.objects.filter(slug=obj.category).first()
+        return cat.name if cat else obj.category.replace('_', ' ').title()
 
     class Meta:
         model = Ticket
@@ -62,7 +74,13 @@ class TicketDetailSerializer(serializers.ModelSerializer):
     department_detail = DepartmentMinimalSerializer(source='department', read_only=True)
     status_display = serializers.CharField(source='get_status_display', read_only=True)
     priority_display = serializers.CharField(source='get_priority_display', read_only=True)
-    category_display = serializers.CharField(source='get_category_display', read_only=True)
+    category_display = serializers.SerializerMethodField()
+
+    def get_category_display(self, obj):
+        if not obj.category:
+            return ''
+        cat = TicketCategory.objects.filter(slug=obj.category).first()
+        return cat.name if cat else obj.category.replace('_', ' ').title()
     comments = CommentSerializer(many=True, read_only=True)
     attachments = AttachmentSerializer(many=True, read_only=True)
     is_sla_response_breached = serializers.ReadOnlyField()
@@ -94,8 +112,11 @@ class TicketCreateSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         cfg = TicketFormConfig.get_config()
         errors = {}
-        if cfg.category_required and not attrs.get('category'):
+        category = attrs.get('category', '')
+        if cfg.category_required and not category:
             errors['category'] = 'Category is required.'
+        elif category and not TicketCategory.objects.filter(slug=category, is_active=True).exists():
+            errors['category'] = 'Invalid or inactive category.'
         if cfg.priority_required and not attrs.get('priority'):
             errors['priority'] = 'Priority is required.'
         if cfg.department_required and not attrs.get('department'):
