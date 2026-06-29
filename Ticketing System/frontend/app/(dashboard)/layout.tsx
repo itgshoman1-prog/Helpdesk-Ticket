@@ -11,28 +11,24 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const hasHydrated = useAuthStore((s) => s._hasHydrated)
 
   useEffect(() => {
-    // Only redirect once Zustand has finished rehydrating from localStorage.
-    // Without this guard, a page refresh briefly shows user=null before
-    // the persisted session is restored, causing a spurious logout redirect.
     if (hasHydrated && !user) router.replace('/login')
   }, [hasHydrated, user, router])
 
-  // While the store is rehydrating, render nothing to avoid a flash.
-  if (!hasHydrated) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-900" />
-      </div>
-    )
-  }
+  const ready = hasHydrated && !!user
 
-  if (!user) return null
-
+  // Next.js App Router requires {children} to always be rendered so the
+  // OuterLayoutRouter can mount. We show an overlay while the Zustand store
+  // is rehydrating from localStorage instead of returning early.
   return (
     <div className="min-h-screen bg-gray-50">
-      <Sidebar />
-      <Topbar />
-      <main className="ml-64 pt-14 min-h-screen">
+      {!ready && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-50">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-900" />
+        </div>
+      )}
+      {ready && <Sidebar />}
+      {ready && <Topbar />}
+      <main className={ready ? 'ml-64 pt-14 min-h-screen' : 'hidden'}>
         <div className="p-6">
           {children}
         </div>
