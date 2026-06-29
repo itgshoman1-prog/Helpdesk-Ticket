@@ -14,21 +14,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     if (hasHydrated && !user) router.replace('/login')
   }, [hasHydrated, user, router])
 
-  const ready = hasHydrated && !!user
-
-  // Next.js App Router requires {children} to always be rendered so the
-  // OuterLayoutRouter can mount. We show an overlay while the Zustand store
-  // is rehydrating from localStorage instead of returning early.
+  // IMPORTANT: {children} must always be rendered so Next.js App Router can
+  // mount OuterLayoutRouter and keep the LayoutRouterContext intact.
+  // A fixed spinner overlay covers the content while Zustand rehydrates.
   return (
     <div className="min-h-screen bg-gray-50">
-      {!ready && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-50">
+      {!hasHydrated && (
+        <div className="fixed inset-0 z-50 bg-gray-50 flex items-center justify-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-900" />
         </div>
       )}
-      {ready && <Sidebar />}
-      {ready && <Topbar />}
-      <main className={ready ? 'ml-64 pt-14 min-h-screen' : 'hidden'}>
+      <Sidebar />
+      <Topbar />
+      <main className="ml-64 pt-14 min-h-screen">
         <div className="p-6">
           {children}
         </div>

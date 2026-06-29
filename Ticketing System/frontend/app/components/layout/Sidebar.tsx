@@ -77,7 +77,7 @@ export function Sidebar() {
         <div className="border-t border-white/10 px-4 py-4">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-xs font-bold">
-              {user.first_name[0]}{user.last_name[0]}
+              {(user.first_name?.[0] ?? '?').toUpperCase()}{user.last_name?.[0]?.toUpperCase()}
             </div>
             <div className="min-w-0">
               <p className="text-sm font-medium truncate">{user.full_name}</p>
