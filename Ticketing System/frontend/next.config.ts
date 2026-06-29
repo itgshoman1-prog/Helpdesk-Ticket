@@ -10,6 +10,15 @@ const nextConfig: NextConfig = {
   images: {
     domains: ['localhost'],
   },
+  async redirects() {
+    return [
+      {
+        source: '/',
+        destination: '/dashboard',
+        permanent: false,
+      },
+    ]
+  },
 }
 
 export default nextConfig
