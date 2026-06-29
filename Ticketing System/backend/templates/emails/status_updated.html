@@ -1,0 +1,14 @@
+{% extends "emails/base.html" %}
+{% block content %}
+<p>Dear {{ ticket.requester.first_name }},</p>
+<p>The status of your ticket has been updated.</p>
+<div class="ticket-box">
+  <p><strong>Ticket Number:</strong> {{ ticket.ticket_number }}</p>
+  <p><strong>Subject:</strong> {{ ticket.title }}</p>
+  <p><strong>New Status:</strong> {{ ticket.get_status_display }}</p>
+  {% if ticket.assigned_to %}
+  <p><strong>Handled By:</strong> {{ ticket.assigned_to.full_name }}</p>
+  {% endif %}
+</div>
+<a href="{{ frontend_url }}/tickets/{{ ticket.id }}" class="btn">View Ticket</a>
+{% endblock %}

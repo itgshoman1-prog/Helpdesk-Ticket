@@ -1,0 +1,187 @@
+export interface User {
+  id: number
+  email: string
+  first_name: string
+  last_name: string
+  full_name: string
+  phone: string
+  role: 'end_user' | 'agent' | 'manager' | 'admin'
+  department: number | null
+  department_name: string | null
+  avatar: string | null
+  is_active: boolean
+  date_joined: string
+  is_agent_or_above?: boolean
+  is_manager_or_above?: boolean
+  is_admin?: boolean
+}
+
+export interface Department {
+  id: number
+  name: string
+  description: string
+  email: string
+  manager: number | null
+  manager_name: string | null
+  auto_assign_to: number | null
+  auto_assign_to_name: string | null
+  is_active: boolean
+  member_count: number
+  sla_policies: SLAPolicy[]
+  created_at: string
+  updated_at: string
+}
+
+export interface TicketFormConfig {
+  category_required: boolean
+  priority_required: boolean
+  department_required: boolean
+  location_required: boolean
+}
+
+export interface SystemSettings {
+  id: number
+  // Organisation
+  company_name: string
+  company_logo: string | null
+  company_logo_url: string | null
+  company_tagline: string
+  company_email: string
+  company_phone: string
+  company_website: string
+  company_address: string
+  // Portal
+  portal_name: string
+  portal_welcome: string
+  support_hours: string
+  // Appearance
+  primary_color: string
+  favicon: string | null
+  favicon_url: string | null
+  // Ticket Numbering
+  ticket_prefix: string
+  ticket_separator: string
+  ticket_include_year: boolean
+  ticket_year_format: 'YYYY' | 'YY'
+  ticket_seq_digits: number
+  ticket_reset_yearly: boolean
+  ticket_number_preview: string
+  // Email
+  email_sender_name: string
+  email_sender_address: string
+  email_reply_to: string
+  email_footer: string
+}
+
+export interface SLAPolicy {
+  id: number
+  department: number | null
+  priority: 'critical' | 'high' | 'medium' | 'low'
+  priority_display: string
+  response_time_minutes: number
+  resolution_time_minutes: number
+  response_time_display: string
+  resolution_time_display: string
+}
+
+export interface Ticket {
+  id: number
+  ticket_number: string
+  title: string
+  description: string
+  category: string
+  category_display: string
+  priority: 'critical' | 'high' | 'medium' | 'low'
+  priority_display: string
+  status: string
+  status_display: string
+  requester: number
+  requester_detail: User
+  department: number | null
+  department_detail: Department | null
+  assigned_to: number | null
+  assigned_to_detail: User | null
+  sla_response_due: string | null
+  sla_resolution_due: string | null
+  first_response_at: string | null
+  resolved_at: string | null
+  closed_at: string | null
+  is_sla_response_breached: boolean
+  is_sla_resolution_breached: boolean
+  location: string
+  comments: Comment[]
+  attachments: Attachment[]
+  created_at: string
+  updated_at: string
+}
+
+export interface Comment {
+  id: number
+  ticket: number
+  author: number
+  author_detail: User
+  body: string
+  is_internal: boolean
+  attachments: Attachment[]
+  created_at: string
+  updated_at: string
+}
+
+export interface Attachment {
+  id: number
+  file: string
+  filename: string
+  file_size: number
+  content_type: string
+  uploaded_at: string
+  uploaded_by: number
+}
+
+export interface Notification {
+  id: number
+  ticket: number | null
+  ticket_number: string | null
+  notification_type: string
+  notification_type_display: string
+  title: string
+  message: string
+  is_read: boolean
+  created_at: string
+}
+
+export interface PaginatedResponse<T> {
+  count: number
+  next: string | null
+  previous: string | null
+  results: T[]
+}
+
+export interface DashboardSummary {
+  total: number
+  new: number
+  open: number
+  pending: number
+  resolved: number
+  closed: number
+  sla_breached: number
+  assigned_to_me?: number
+}
+
+export const PRIORITY_COLORS: Record<string, string> = {
+  critical: 'bg-red-100 text-red-700 border-red-200',
+  high: 'bg-orange-100 text-orange-700 border-orange-200',
+  medium: 'bg-yellow-100 text-yellow-700 border-yellow-200',
+  low: 'bg-green-100 text-green-700 border-green-200',
+}
+
+export const STATUS_COLORS: Record<string, string> = {
+  new: 'bg-blue-100 text-blue-700 border-blue-200',
+  assigned: 'bg-purple-100 text-purple-700 border-purple-200',
+  in_progress: 'bg-indigo-100 text-indigo-700 border-indigo-200',
+  pending_user: 'bg-yellow-100 text-yellow-700 border-yellow-200',
+  pending_vendor: 'bg-orange-100 text-orange-700 border-orange-200',
+  escalated: 'bg-red-100 text-red-700 border-red-200',
+  resolved: 'bg-green-100 text-green-700 border-green-200',
+  closed: 'bg-gray-100 text-gray-700 border-gray-200',
+  reopened: 'bg-pink-100 text-pink-700 border-pink-200',
+}

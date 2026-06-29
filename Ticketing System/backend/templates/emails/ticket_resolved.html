@@ -1,0 +1,13 @@
+{% extends "emails/base.html" %}
+{% block content %}
+<p>Dear {{ ticket.requester.first_name }},</p>
+<p>Great news! Your support ticket has been resolved.</p>
+<div class="ticket-box">
+  <p><strong>Ticket Number:</strong> {{ ticket.ticket_number }}</p>
+  <p><strong>Subject:</strong> {{ ticket.title }}</p>
+  <p><strong>Resolved By:</strong> {{ ticket.assigned_to.full_name }}</p>
+  <p><strong>Resolved At:</strong> {{ ticket.resolved_at|date:"N j, Y g:i A" }}</p>
+</div>
+<p>If you feel the issue is not fully resolved, you can reopen the ticket from the portal.</p>
+<a href="{{ frontend_url }}/tickets/{{ ticket.id }}" class="btn">View Ticket</a>
+{% endblock %}

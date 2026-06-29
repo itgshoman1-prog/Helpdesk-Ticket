@@ -1,0 +1,17 @@
+{% extends "emails/base.html" %}
+{% block content %}
+<p>Dear {{ ticket.requester.first_name }},</p>
+<p>Your support ticket has been successfully submitted. Our team will review and respond shortly.</p>
+<div class="ticket-box">
+  <p><strong>Ticket Number:</strong> {{ ticket.ticket_number }}</p>
+  <p><strong>Subject:</strong> {{ ticket.title }}</p>
+  <p><strong>Category:</strong> {{ ticket.get_category_display }}</p>
+  <p><strong>Priority:</strong> {{ ticket.get_priority_display }}</p>
+  <p><strong>Status:</strong> {{ ticket.get_status_display }}</p>
+  {% if ticket.sla_resolution_due %}
+  <p><strong>Expected Resolution:</strong> {{ ticket.sla_resolution_due|date:"N j, Y g:i A" }}</p>
+  {% endif %}
+</div>
+<a href="{{ frontend_url }}/tickets/{{ ticket.id }}" class="btn">View Ticket</a>
+<p>If you need to add more information or attachments, please log in to the portal and update your ticket.</p>
+{% endblock %}

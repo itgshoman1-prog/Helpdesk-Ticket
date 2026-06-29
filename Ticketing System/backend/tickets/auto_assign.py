@@ -1,0 +1,47 @@
+"""
+Auto-assigns a ticket to the best available agent in its department.
+Priority order:
+  1. dept.auto_assign_to  (explicitly configured assignee)
+  2. dept.manager         (department manager)
+  3. Least-busy active agent/manager in the department
+"""
+from django.db.models import Count, Q
+
+
+def auto_assign(ticket):
+    if not ticket.department_id:
+        return
+
+    dept = ticket.department
+
+    def _assign(user):
+        ticket.assigned_to = user
+        ticket.status = 'assigned'
+
+    def _eligible(user):
+        return user and user.is_active and user.role in ('agent', 'manager', 'admin')
+
+    # 1. Explicitly configured auto-assignee
+    if _eligible(dept.auto_assign_to):
+        _assign(dept.auto_assign_to)
+        return
+
+    # 2. Department manager
+    if _eligible(dept.manager):
+        _assign(dept.manager)
+        return
+
+    # 3. Least-busy agent/manager in the department
+    from users.models import User
+    agents = (
+        User.objects
+        .filter(department=dept, is_active=True, role__in=('agent', 'manager'))
+        .annotate(open_count=Count(
+            'assigned_tickets',
+            filter=Q(assigned_tickets__status__in=('new', 'assigned', 'in_progress', 'escalated'))
+        ))
+        .order_by('open_count')
+    )
+
+    if agents.exists():
+        _assign(agents.first())
