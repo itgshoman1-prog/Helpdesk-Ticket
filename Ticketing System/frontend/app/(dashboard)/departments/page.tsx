@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import api from '@/app/lib/api'
 import { Department, User } from '@/app/lib/types'
+import { useAuthStore } from '@/app/lib/store'
 import { Card, CardContent } from '@/app/components/ui/card'
 import { Button } from '@/app/components/ui/button'
 import { Input } from '@/app/components/ui/input'
@@ -26,6 +27,8 @@ const ROUTING_MODE_LABELS: Record<string, string> = {
 }
 
 export default function DepartmentsPage() {
+  const currentUser = useAuthStore((s) => s.user)
+  const isAdmin = currentUser?.role === 'admin'
   const [departments, setDepartments] = useState<Department[]>([])
   const [agents, setAgents] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
@@ -126,15 +129,15 @@ export default function DepartmentsPage() {
           <h1 className="text-2xl font-bold text-gray-900">Departments</h1>
           <p className="text-sm text-gray-500">{departments.length} departments configured</p>
         </div>
-        <Button onClick={openCreate}><Plus className="w-4 h-4 mr-1.5" /> Add Department</Button>
+        {isAdmin && <Button onClick={openCreate}><Plus className="w-4 h-4 mr-1.5" /> Add Department</Button>}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {departments.map((dept) => (
           <Card key={dept.id} className={!dept.is_active ? 'opacity-60' : ''}>
             <CardContent className="p-5">
-              {/* Delete confirmation overlay */}
-              {deleteConfirmId === dept.id && (
+              {/* Delete confirmation overlay — only admins can trigger this */}
+              {isAdmin && deleteConfirmId === dept.id && (
                 <div className="mb-3 bg-red-50 border border-red-200 rounded-xl p-3 space-y-2">
                   <div className="flex items-start gap-2">
                     <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
@@ -163,17 +166,19 @@ export default function DepartmentsPage() {
                 <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
                   <Building2 className="w-5 h-5 text-blue-900" />
                 </div>
-                <div className="flex gap-1">
-                  <button onClick={() => openEdit(dept)} className="p-1.5 rounded-md hover:bg-gray-100 text-gray-500" title="Edit">
-                    <Edit className="w-4 h-4" />
-                  </button>
-                  <button onClick={() => toggleActive(dept)} className={`p-1.5 rounded-md hover:bg-gray-100 ${dept.is_active ? 'text-gray-500' : 'text-green-600'}`} title={dept.is_active ? 'Deactivate' : 'Activate'}>
-                    {dept.is_active ? <PowerOff className="w-4 h-4" /> : <Power className="w-4 h-4" />}
-                  </button>
-                  <button onClick={() => setDeleteConfirmId(dept.id)} className="p-1.5 rounded-md hover:bg-red-50 text-gray-400 hover:text-red-500" title="Delete & anonymise">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
+                {isAdmin && (
+                  <div className="flex gap-1">
+                    <button onClick={() => openEdit(dept)} className="p-1.5 rounded-md hover:bg-gray-100 text-gray-500" title="Edit">
+                      <Edit className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => toggleActive(dept)} className={`p-1.5 rounded-md hover:bg-gray-100 ${dept.is_active ? 'text-gray-500' : 'text-green-600'}`} title={dept.is_active ? 'Deactivate' : 'Activate'}>
+                      {dept.is_active ? <PowerOff className="w-4 h-4" /> : <Power className="w-4 h-4" />}
+                    </button>
+                    <button onClick={() => setDeleteConfirmId(dept.id)} className="p-1.5 rounded-md hover:bg-red-50 text-gray-400 hover:text-red-500" title="Delete & anonymise">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
               </div>
               <h3 className="font-semibold text-gray-900 mb-1">{dept.name}</h3>
               {dept.description && <p className="text-sm text-gray-500 mb-3 line-clamp-2">{dept.description}</p>}
@@ -203,7 +208,7 @@ export default function DepartmentsPage() {
                 <span className="flex items-center gap-1"><Users className="w-3.5 h-3.5" /> {dept.member_count} members</span>
                 {dept.email && <span className="flex items-center gap-1 truncate"><Mail className="w-3.5 h-3.5 flex-shrink-0" /> {dept.email}</span>}
               </div>
-              {dept.sla_policies.length > 0 && (
+              {dept.sla_policies?.length > 0 && (
                 <div className="mt-3 pt-3 border-t border-gray-100">
                   <p className="text-xs font-medium text-gray-500 mb-2">SLA Policies</p>
                   <div className="grid grid-cols-2 gap-1">
