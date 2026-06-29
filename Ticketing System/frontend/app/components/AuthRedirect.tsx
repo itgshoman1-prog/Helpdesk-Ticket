@@ -1,18 +1,22 @@
 'use client'
-import { useEffect } from 'react'
-import { useAuthStore } from '@/app/lib/store'
+import { useEffect, useState } from 'react'
 
 export function AuthRedirect() {
-  const user = useAuthStore((s) => s.user)
-  const hasHydrated = useAuthStore((s) => s._hasHydrated)
+  // Use a local `ready` flag instead of Zustand _hasHydrated.
+  // localStorage is read in useEffect (after React commits + context is set),
+  // so there's no Zustand state update racing with LayoutRouterContext setup.
+  const [ready, setReady] = useState(false)
 
   useEffect(() => {
-    // Use window.location to avoid touching the Next.js client router while
-    // the LayoutRouterContext is still being initialised (avoids E56 invariant).
-    if (hasHydrated && !user) window.location.replace('/login')
-  }, [hasHydrated, user])
+    const token = localStorage.getItem('access_token')
+    if (!token) {
+      window.location.replace('/login')
+    } else {
+      setReady(true)
+    }
+  }, [])
 
-  if (!hasHydrated) {
+  if (!ready) {
     return (
       <div className="fixed inset-0 z-50 bg-gray-50 flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-900" />
